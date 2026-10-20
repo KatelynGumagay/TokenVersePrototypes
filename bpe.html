@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#101212" />
+  <title>Merge Lab — BPE prototype</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap');
+    :root { color-scheme: dark; font-family: Manrope, system-ui, sans-serif; background: #101212; color: #f3f4ee; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: radial-gradient(ellipse at 50% 0%, #242b27 0, #151917 42%, #101212 78%); }
+    button { font: inherit; }
+    .shell { width: min(100% - 40px, 1060px); margin: auto; padding: 30px 0 58px; }
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 48px; }
+    .brand { display: flex; align-items: center; gap: 11px; color: inherit; text-decoration: none; font-size: 14px; font-weight: 800; letter-spacing: -.03em; }
+    .brand-mark { display: grid; width: 28px; height: 28px; place-items: center; border: 1px solid #b8f36c; border-radius: 9px; color: #b8f36c; font: 15px 'DM Mono', monospace; }
+    .tag, .eyebrow { color: #929a92; font: 11px 'DM Mono', monospace; letter-spacing: .14em; text-transform: uppercase; }
+    .intro { margin-bottom: 26px; }
+    .eyebrow { color: #b8f36c; }
+    h1 { margin: 10px 0 7px; font-size: clamp(36px, 5vw, 52px); line-height: 1; letter-spacing: -.065em; }
+    .intro p { margin: 0; color: #929a92; font-size: 14px; }
+    .levels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin: 26px 0 14px; }
+    .level { display: flex; gap: 11px; align-items: center; padding: 11px 13px; border: 1px solid #2a312d; border-radius: 11px; background: #181d1a; color: #858d85; text-align: left; cursor: pointer; }
+    .level:hover:not(:disabled) { border-color: #56664b; color: #e6ecdf; }
+    .level[aria-current="step"] { border-color: #70944f; background: #1c251c; color: #f3f4ee; }
+    .level:disabled { cursor: default; opacity: .55; }
+    .level-num { display: grid; width: 24px; height: 24px; flex: 0 0 24px; place-items: center; border: 1px solid #414941; border-radius: 7px; color: #b8f36c; font: 11px 'DM Mono', monospace; }
+    .level[aria-current="step"] .level-num { border-color: #b8f36c; background: #b8f36c; color: #172012; }
+    .level-name { display: block; font-size: 12px; font-weight: 700; }
+    .level-word { display: block; margin-top: 2px; color: #818a81; font: 10px 'DM Mono', monospace; }
+    .board { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(300px, .8fr); gap: 14px; align-items: stretch; }
+    .panel { min-width: 0; padding: 20px; border: 1px solid #2a312d; border-radius: 15px; background: linear-gradient(160deg, #1a201c, #151916); }
+    .panel-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .panel-title { color: #8c958b; font: 10px 'DM Mono', monospace; letter-spacing: .13em; text-transform: uppercase; }
+    .counter { color: #8c958b; font: 10px 'DM Mono', monospace; }
+    .word-prompt { margin-bottom: 17px; color: #747d74; font-size: 12px; }
+    .word-prompt strong { color: #e0e7dc; font: 500 13px 'DM Mono', monospace; }
+    .tokens { display: flex; min-height: 116px; flex-wrap: wrap; align-content: center; align-items: center; justify-content: center; gap: 8px; padding: 20px 12px; border: 1px dashed #3a4539; border-radius: 12px; background: #111512; }
+    .token { min-width: 46px; padding: 12px 14px; border: 1px solid #42523d; border-radius: 9px; background: #20291f; color: #e0f4d1; font: 500 19px 'DM Mono', monospace; text-align: center; transition: transform .16s, border-color .16s, background .16s; }
+    .token.drag-over { transform: translateY(-3px); border-color: #b8f36c; background: #293a23; }
+    .token.pair-preview { border-color: #789857; background: #232e22; }
+    .tokens.has-selection .token { cursor: pointer; }
+    .tokens.has-selection .token:hover, .token:focus-visible { border-color: #b8f36c; outline: none; }
+    .token.fresh { animation: pop .24s ease-out; }
+    @keyframes pop { from { transform: scale(.85); opacity: .35; } to { transform: scale(1); opacity: 1; } }
+    .hint { margin: 11px 0 0; min-height: 17px; color: #747d74; font: 10px 'DM Mono', monospace; }
+    .hint.good { color: #b8f36c; }
+    .hint.warn { color: #e78470; }
+    .rules { display: flex; flex-direction: column; gap: 8px; }
+    .ribbon { position: relative; display: flex; width: calc(var(--pair-length) * 11.4px + 70px); max-width: 100%; min-height: 42px; align-items: center; justify-content: space-between; gap: 12px; overflow: hidden; padding: 9px 12px 9px 16px; border: 1px solid #3a4637; border-radius: 8px 14px 14px 8px; background: linear-gradient(100deg, #222b21, #1b211c); color: #e2eadc; text-align: left; cursor: grab; touch-action: none; user-select: none; }
+    .ribbon::before { position: absolute; inset: 0 auto 0 0; width: 4px; background: #91c56a; content: ''; }
+    .ribbon::after { position: absolute; top: 50%; right: 8px; width: 11px; height: 11px; border: 1px solid #77876e; border-radius: 50%; background: #171c18; content: ''; transform: translateY(-50%); }
+    .ribbon:hover:not(:disabled) { border-color: #718b60; background: #252f24; }
+    .ribbon.selected { border-color: #b8f36c; background: #293722; box-shadow: 0 0 0 2px #b8f36c22; }
+    .ribbon:active:not(:disabled) { cursor: grabbing; }
+    .ribbon.drag-source { opacity: .2; }
+    .ribbon:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid #b8f36c; outline-offset: 3px; }
+    .ribbon .pair { font: 500 13px 'DM Mono', monospace; white-space: nowrap; }
+    .ribbon .rank { color: #7c867b; font: 9px 'DM Mono', monospace; margin-right: 15px; }
+    .ribbon.used { border-color: #3a4637; background: #222b21; color: #e2eadc; cursor: default; opacity: .48; }
+    .ribbon.used::before { background: #91c56a; }
+    .ribbon.used::after { border-color: #91c56a; background: #91c56a; }
+    .ribbon.wrong { animation: shake .24s linear; border-color: #a35c51; }
+    @keyframes shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+    .drag-ghost { position: fixed; z-index: 10; width: max-content; pointer-events: none; opacity: .96; transform: rotate(-2deg); box-shadow: 0 14px 36px #0009; }
+    .actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; }
+    .action-note { color: #737c73; font: 10px 'DM Mono', monospace; }
+    .primary { border: 0; border-radius: 9px; background: #b8f36c; color: #172012; padding: 11px 17px; font-size: 12px; font-weight: 800; cursor: pointer; transition: transform .15s, background .15s; }
+    .primary:hover:not(:disabled) { transform: translateY(-1px); background: #c9ff83; }
+    .primary:disabled { background: #2a302b; color: #798178; cursor: not-allowed; }
+    .secondary { border: 1px solid #384139; border-radius: 9px; background: transparent; color: #a4ada3; padding: 10px 14px; font-size: 12px; cursor: pointer; }
+    .secondary:hover { border-color: #707d6a; color: #f3f4ee; }
+    .overlay { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 20px; background: #080b09d9; backdrop-filter: blur(8px); }
+    .overlay[hidden] { display: none; }
+    .dialog { width: min(100%, 500px); padding: 30px; border: 1px solid #344333; border-radius: 17px; background: #181e19; box-shadow: 0 30px 100px #0009; }
+    .dialog.incorrect { border-color: #713d39; background: #241918; }
+    .dialog.incorrect .eyebrow { color: #e78470; }
+    .dialog.incorrect .result-token { border-color: #71463f; color: #f0d2cc; background: #30201e; }
+    .dialog.incorrect .dialog-actions .primary { background: #e78470; color: #231412; }
+    .dialog h2 { margin: 12px 0 7px; font-size: 32px; letter-spacing: -.06em; }
+    .dialog p { margin: 0; color: #9ba49a; font-size: 13px; line-height: 1.6; }
+    .result-tokens { display: flex; flex-wrap: wrap; gap: 8px; margin: 23px 0 26px; }
+    .result-token { padding: 8px 11px; border: 1px solid #3b4938; border-radius: 7px; color: #dbf3cd; background: #20291f; font: 13px 'DM Mono', monospace; }
+    .dialog-actions { display: flex; gap: 9px; }
+    .dialog-actions .primary { flex: 1; }
+    .dialog.correct .dialog-actions .primary { background: #b8f36c; color: #172012; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+    @media(max-width: 760px) { .shell { width: min(100% - 28px, 1060px); padding-top: 22px; } header { margin-bottom: 34px; } .board { grid-template-columns: 1fr; } .panel { padding: 16px; } .levels { gap: 6px; } .level { gap: 7px; padding: 9px 7px; } .level-name { font-size: 10px; } .level-word { font-size: 9px; } .tokens { min-height: 96px; } }
+    @media(max-width: 420px) { .tag { font-size: 9px; } .level-num { display: none; } .level { justify-content: center; text-align: center; } .actions { align-items: flex-end; } .action-note { max-width: 155px; line-height: 1.5; } }
+    @media(prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header><a class="brand" href="index.html" aria-label="Back to TokenVerse home"><span class="brand-mark">/</span> tokenverse</a><span class="tag">Prototype 02 · BPE</span></header>
+    <section class="intro"><div class="eyebrow">Byte pair encoding</div><h1>Merge Lab</h1><p>Use each ranked ribbon on its exact neighboring pair. One ribbon merges two tokens.</p></section>
+    <nav class="levels" aria-label="Choose a level">
+      <button class="level" type="button" data-level="0" aria-current="step"><span class="level-num">01</span><span><span class="level-name">One token</span><span class="level-word">cater</span></span></button>
+      <button class="level" type="button" data-level="1"><span class="level-num">02</span><span><span class="level-name">Two tokens</span><span class="level-word">sunset</span></span></button>
+      <button class="level" type="button" data-level="2"><span class="level-num">03</span><span><span class="level-name">Misspelled</span><span class="level-word">freind</span></span></button>
+    </nav>
+    <div class="board">
+      <section class="panel" aria-labelledby="word-heading">
+        <div class="panel-head"><span id="word-heading" class="panel-title">Pretokenized word</span><span class="counter" id="merge-count">0 merges</span></div>
+        <div class="word-prompt">Merge the pieces of <strong id="target-word">cater</strong></div>
+        <div class="tokens" id="tokens" aria-label="Current tokens"></div>
+        <p class="hint" id="hint" aria-live="polite">Drag a ribbon over the first of two matching neighboring tokens.</p>
+        <div class="actions"><span class="action-note" id="progress-note">Check when you’re ready to finish this word.</span><button class="primary" id="done" type="button">Check</button></div>
+      </section>
+      <section class="panel" aria-labelledby="ribbons-heading">
+        <div class="panel-head"><span class="panel-title" id="ribbons-heading">Ranked merge ribbons</span><span class="counter" id="ribbon-count">0 matching</span></div>
+        <div class="rules" id="rules" aria-label="Merge rules"></div>
+      </section>
+    </div>
+    <p class="sr-only" id="announcer" aria-live="polite"></p>
+  </main>
+  <div class="overlay" id="overlay" hidden>
+    <section class="dialog" id="result-dialog" role="dialog" aria-modal="true" aria-labelledby="result-title">
+      <div class="eyebrow" id="result-eyebrow">Level complete</div><h2 id="result-title">Tokens found.</h2>
+      <p id="result-copy"></p><div class="result-tokens" id="result-tokens"></div>
+      <div class="dialog-actions"><button class="secondary" id="replay" type="button">Try again</button><button class="primary" id="next" type="button">Next level ↗</button></div>
+    </section>
+  </div>
+  <script>
+    const levels = [
+      { word: 'cater', title: 'One token', target: ['cater'], rules: [
+        { a: 'c', b: 'a' }, { a: 'ca', b: 't' }, { a: 'cat', b: 'e' }, { a: 'cate', b: 'r' },
+        { a: 'c', b: 'r', distractor: true }, { a: 'a', b: 'r', distractor: true }
+      ] },
+      { word: 'sunset', title: 'Two tokens', target: ['sun', 'set'], rules: [
+        { a: 's', b: 'u' }, { a: 'su', b: 'n' }, { a: 's', b: 'e' }, { a: 'se', b: 't' },
+        { a: 's', b: 't', distractor: true }, { a: 'u', b: 'e', distractor: true }, { a: 'n', b: 't', distractor: true }
+      ] },
+      { word: 'freind', title: 'Misspelled word', target: ['fre', 'ind'], rules: [
+        { a: 'f', b: 'r' }, { a: 'fr', b: 'e' }, { a: 'i', b: 'n' }, { a: 'in', b: 'd' },
+        { a: 'f', b: 'd', distractor: true }, { a: 'r', b: 'n', distractor: true }, { a: 'e', b: 'n', distractor: true }
+      ] }
+    ];
+    const tokensEl = document.querySelector('#tokens');
+    const rulesEl = document.querySelector('#rules');
+    const hint = document.querySelector('#hint');
+    const done = document.querySelector('#done');
+    const overlay = document.querySelector('#overlay');
+    const used = new Set();
+    let levelIndex = 0;
+    let tokens = [];
+    let drag = null;
+    let mustRestart = false;
+    let restartFromBeginning = false;
+
+    function current() { return levels[levelIndex]; }
+    function tell(message, tone = '') {
+      hint.textContent = message;
+      hint.className = `hint ${tone}`;
+      document.querySelector('#announcer').textContent = message;
+    }
+    function renderTokens(fresh = []) {
+      tokensEl.replaceChildren(...tokens.map((value, index) => {
+        const chip = document.createElement('div');
+        chip.className = `token${fresh.includes(index) ? ' fresh' : ''}`;
+        chip.textContent = value;
+        chip.dataset.index = index;
+        chip.tabIndex = 0;
+        chip.setAttribute('role', 'button');
+        chip.setAttribute('aria-label', `Token ${index + 1}: ${value}`);
+        tokensEl.appendChild(chip);
+        return chip;
+      }));
+      const mergeCount = [...current().word].length - tokens.length;
+      document.querySelector('#merge-count').textContent = `${mergeCount} ${mergeCount === 1 ? 'merge' : 'merges'}`;
+    }
+    function availableMerges() {
+      return current().rules.filter((rule, index) => !used.has(index) && hasPair(rule)).length;
+    }
+    function matchesTarget() {
+      return tokens.length === current().target.length && tokens.every((token, index) => token === current().target[index]);
+    }
+    function updateProgress() {
+      const available = availableMerges();
+      document.querySelector('#ribbon-count').textContent = `${available} matching`;
+      document.querySelector('#progress-note').textContent = 'Check when you’re ready to finish this word.';
+      done.disabled = false;
+      document.querySelectorAll('.ribbon').forEach(el => el.classList.toggle('used', used.has(Number(el.dataset.rule))));
+    }
+    function makeRibbon(rule, index) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'ribbon';
+      button.dataset.rule = index;
+      button.style.setProperty('--pair-length', rule.a.length + rule.b.length);
+      button.setAttribute('aria-label', `Rank ${index + 1}: merge ${rule.a} and ${rule.b}${rule.distractor ? ', distractor' : ''}. Drag over the first matching token, or press Enter to select.`);
+      button.innerHTML = `<span class="pair">${rule.a}+${rule.b}</span><span class="rank">#${String(index + 1).padStart(2, '0')}</span>`;
+      button.addEventListener('pointerdown', startDrag);
+      button.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          if (used.has(index)) return;
+          button.classList.toggle('selected');
+          if (button.classList.contains('selected')) {
+            document.querySelectorAll('.ribbon.selected').forEach(other => { if (other !== button) other.classList.remove('selected'); });
+            tokensEl.classList.add('has-selection');
+            tell(`Selected ${rule.a} + ${rule.b}. Choose the first token in the pair.`);
+            tokensEl.querySelector('.token')?.focus();
+          } else {
+            tokensEl.classList.remove('has-selection');
+            tell('Drag a ribbon onto the two matching neighboring tokens.');
+          }
+        }
+      });
+      return button;
+    }
+    function loadLevel(index) {
+      levelIndex = index;
+      tokens = [...current().word];
+      used.clear();
+      mustRestart = false;
+      restartFromBeginning = false;
+      document.querySelector('#replay').textContent = 'Try again';
+      document.querySelector('#target-word').textContent = current().word;
+      document.querySelectorAll('.level').forEach((button, i) => {
+        button.setAttribute('aria-current', i === index ? 'step' : 'false');
+      });
+      const shuffled = current().rules.map((rule, rank) => ({ rule, rank }));
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      rulesEl.replaceChildren(...shuffled.map(({ rule, rank }) => makeRibbon(rule, rank)));
+      renderTokens();
+      updateProgress();
+      tell('Drag a ribbon onto the two matching neighboring tokens.');
+      overlay.hidden = true;
+      document.querySelectorAll('.level').forEach((button, i) => button.disabled = i > index);
+    }
+    function isPair(rule, start) { return tokens[start] === rule.a && tokens[start + 1] === rule.b; }
+    function hasPair(rule) { return tokens.some((token, index) => isPair(rule, index)); }
+    function attempt(ruleIndex, startIndex, ribbon) {
+      if (used.has(ruleIndex)) return;
+      const rule = current().rules[ruleIndex];
+      if (startIndex >= 0 && startIndex < tokens.length - 1 && isPair(rule, startIndex)) {
+        used.add(ruleIndex);
+        tokens.splice(startIndex, 2, rule.a + rule.b);
+        renderTokens([startIndex]);
+        tell(`Merged ${rule.a} + ${rule.b} into ${rule.a + rule.b}.`, 'good');
+      } else {
+        tell(`No merge: ${rule.a} + ${rule.b} must be dropped on that exact neighboring pair. The ribbon is back in the list.`, 'warn');
+        if (ribbon) { ribbon.classList.add('wrong'); setTimeout(() => ribbon.classList.remove('wrong'), 300); }
+      }
+      updateProgress();
+    }
+    function startDrag(event) {
+      const button = event.currentTarget;
+      const index = Number(button.dataset.rule);
+      if (used.has(index) || event.button !== 0) return;
+      event.preventDefault();
+      const rect = button.getBoundingClientRect();
+      const ghost = button.cloneNode(true);
+      ghost.classList.add('drag-ghost');
+      ghost.style.width = `${rect.width}px`;
+      document.body.appendChild(ghost);
+      button.classList.add('drag-source');
+      drag = { index, button, ghost, offsetX: event.clientX - rect.left, offsetY: event.clientY - rect.top };
+      moveDrag(event);
+      button.setPointerCapture(event.pointerId);
+      button.addEventListener('pointermove', moveDrag);
+      button.addEventListener('pointerup', endDrag, { once: true });
+      button.addEventListener('pointercancel', cancelDrag, { once: true });
+    }
+    function moveDrag(event) {
+      if (!drag) return;
+      drag.ghost.style.left = `${event.clientX - drag.offsetX}px`;
+      drag.ghost.style.top = `${event.clientY - drag.offsetY}px`;
+      const over = document.elementFromPoint(event.clientX, event.clientY)?.closest('.token');
+      document.querySelectorAll('.token.drag-over').forEach(el => el.classList.remove('drag-over'));
+      if (over) {
+        over.classList.add('drag-over');
+        over.nextElementSibling?.classList.add('pair-preview');
+      }
+    }
+    function endDrag(event) {
+      if (!drag) return;
+      const { index, button, ghost } = drag;
+      const over = document.elementFromPoint(event.clientX, event.clientY)?.closest('.token');
+      const start = over ? Number(over.dataset.index) : -1;
+      drag = null;
+      ghost.remove();
+      document.querySelectorAll('.token.drag-over, .token.pair-preview').forEach(el => el.classList.remove('drag-over', 'pair-preview'));
+      button.removeEventListener('pointermove', moveDrag);
+      button.classList.remove('drag-source');
+      attempt(index, start, button);
+    }
+    function cancelDrag() {
+      if (!drag) return;
+      drag.ghost.remove();
+      drag.button.removeEventListener('pointermove', moveDrag);
+      drag.button.classList.remove('drag-source');
+      drag = null;
+      document.querySelectorAll('.token.drag-over, .token.pair-preview').forEach(el => el.classList.remove('drag-over', 'pair-preview'));
+    }
+    tokensEl.addEventListener('click', event => {
+      const selected = document.querySelector('.ribbon.selected');
+      const chip = event.target.closest('.token');
+      if (!selected || !chip) return;
+      const index = Number(selected.dataset.rule);
+      selected.classList.remove('selected');
+      tokensEl.classList.remove('has-selection');
+      attempt(index, Number(chip.dataset.index), selected);
+    });
+    tokensEl.addEventListener('keydown', event => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      const selected = document.querySelector('.ribbon.selected');
+      const chip = event.target.closest('.token');
+      if (!selected || !chip) return;
+      event.preventDefault();
+      const index = Number(selected.dataset.rule);
+      selected.classList.remove('selected');
+      tokensEl.classList.remove('has-selection');
+      attempt(index, Number(chip.dataset.index), selected);
+    });
+    document.querySelectorAll('.level').forEach(button => button.addEventListener('click', () => {
+      const nextIndex = Number(button.dataset.level);
+      if (nextIndex <= levelIndex) loadLevel(nextIndex);
+    }));
+    document.querySelector('#done').addEventListener('click', () => {
+      const expected = current().target;
+      const correct = matchesTarget();
+      const remaining = availableMerges();
+      document.querySelector('#result-eyebrow').textContent = `Level ${String(levelIndex + 1).padStart(2, '0')} · ${current().title}`;
+      mustRestart = !correct;
+      const resultDialog = document.querySelector('#result-dialog');
+      resultDialog.classList.toggle('incorrect', mustRestart);
+      resultDialog.classList.toggle('correct', correct);
+      document.querySelector('#result-title').textContent = mustRestart
+        ? (remaining > 0 ? 'More merge options remain.' : 'Not the ending tokens yet.')
+        : 'Tokens found.';
+      document.querySelector('#result-copy').textContent = mustRestart
+        ? remaining > 0
+          ? `There ${remaining === 1 ? 'is' : 'are'} ${remaining} more valid merge ${remaining === 1 ? 'option' : 'options'}. Restart this word and try again.`
+          : `The ending tokens should be ${expected.join(' + ')}. Restart this word and try again.`
+        : (levelIndex === 2 ? 'BPE follows its merge rules; it does not correct spelling.' : 'You followed the merge ranks and found the expected token split.');
+      document.querySelector('#result-tokens').replaceChildren(...tokens.map(value => {
+        const chip = document.createElement('span'); chip.className = 'result-token'; chip.textContent = value; return chip;
+      }));
+      const nextButton = document.querySelector('#next');
+      restartFromBeginning = !mustRestart && correct && levelIndex === levels.length - 1;
+      nextButton.hidden = mustRestart || (levelIndex === levels.length - 1 && !restartFromBeginning);
+      nextButton.textContent = restartFromBeginning ? 'Restart from beginning ↗' : levelIndex === levels.length - 1 ? 'Back to hub ↗' : 'Next level ↗';
+      document.querySelector('#replay').textContent = mustRestart ? 'Restart word' : 'Try again';
+      overlay.hidden = false;
+      document.querySelector('#replay').focus();
+    });
+    document.querySelector('#replay').addEventListener('click', () => loadLevel(levelIndex));
+    document.querySelector('#next').addEventListener('click', () => {
+      if (restartFromBeginning) loadLevel(0);
+      else if (levelIndex < levels.length - 1) loadLevel(levelIndex + 1);
+      else location.href = 'index.html';
+    });
+    overlay.addEventListener('click', event => { if (event.target === overlay && !mustRestart) overlay.hidden = true; });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape' && !overlay.hidden && !mustRestart) overlay.hidden = true; });
+    loadLevel(0);
+  </script>
+</body>
+</html>

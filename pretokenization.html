@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cutline — a pretokenization game</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap');
+    :root { color-scheme: dark; font-family: Manrope, system-ui, sans-serif; background: #101212; color: #f3f4ee; font-synthesis: none; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: radial-gradient(ellipse at 50% 0%, #242b27 0, #151917 42%, #101212 78%); }
+    button { font: inherit; }
+    .shell { width: min(100% - 48px, 1120px); margin: 0 auto; padding: 40px 0 56px; }
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 86px; }
+    .brand { display: flex; gap: 11px; align-items: center; font-size: 14px; font-weight: 800; letter-spacing: -.03em; }
+    .brand-mark { width: 28px; height: 28px; border: 1px solid #b8f36c; border-radius: 9px; display: grid; place-items: center; color: #b8f36c; font: 15px 'DM Mono', monospace; }
+    .tag { color: #868d86; font: 11px 'DM Mono', monospace; letter-spacing: .12em; text-transform: uppercase; }
+    .intro { max-width: 720px; margin: 0 auto 48px; text-align: center; }
+    .eyebrow { color: #b8f36c; font: 11px 'DM Mono', monospace; letter-spacing: .18em; text-transform: uppercase; }
+    h1 { margin: 13px 0 10px; font-size: clamp(38px, 6vw, 64px); line-height: 1.05; letter-spacing: -.065em; }
+    .intro p { color: #929a92; margin: 0; font-size: 15px; }
+    .rules { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+    .rule { display: flex; align-items: center; gap: 12px; min-height: 66px; padding: 14px 16px; border: 1px solid #2a312d; border-radius: 12px; background: #181d1a; color: #a3aaa3; font-size: 13px; transition: border-color .2s, background .2s, color .2s; }
+    .rule-icon { width: 27px; height: 27px; flex: 0 0 27px; border: 1px solid #414941; border-radius: 8px; display: grid; place-items: center; color: #c1c7bf; font: 12px 'DM Mono', monospace; }
+    .rule.good { border-color: #47713c; background: #182318; color: #ddf4d1; }
+    .rule.good .rule-icon { border-color: #84bd60; background: #b8f36c; color: #14200f; }
+    .rule.bad { border-color: #713d39; background: #241918; color: #f0d2cc; }
+    .rule.bad .rule-icon { border-color: #bb6d5c; background: #e78470; color: #231412; }
+    .track { height: 186px; border: 1px solid #2c332e; border-radius: 18px; position: relative; overflow: hidden; background: linear-gradient(180deg, #191e1b, #151916); box-shadow: 0 24px 80px #0003; }
+    .track::before, .track::after { content: ''; z-index: 2; position: absolute; top: 0; bottom: 0; width: 90px; pointer-events: none; }
+    .track::before { left: 0; background: linear-gradient(90deg, #191e1b, transparent); }
+    .track::after { right: 0; background: linear-gradient(270deg, #161b18, transparent); }
+    .track-label { position: absolute; left: 22px; top: 18px; color: #626b63; font: 10px 'DM Mono', monospace; letter-spacing: .14em; text-transform: uppercase; }
+    .lane { position: absolute; inset: 0 auto 0 0; display: flex; align-items: center; width: max-content; will-change: transform; animation: drift 48s linear infinite; }
+    .lane.paused { animation-play-state: paused; }
+    @keyframes drift { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+    .sentence { display: inline-flex; align-items: center; white-space: pre; color: #f3f4ee; font-size: clamp(24px, 3.6vw, 39px); line-height: 1.8; font-weight: 600; letter-spacing: -.045em; }
+    .char { display: inline-block; }
+    .boundary { display: inline-block; width: 13px; height: 58px; flex: 0 0 13px; }
+    .boundary.target::after, .boundary.cut::after { content: ''; display: block; width: 2px; height: 42px; margin: 8px auto; border-radius: 2px; }
+    .boundary.target::after { background: #b8f36c99; box-shadow: 0 0 12px #b8f36c55; }
+    .boundary.cut::after { background: #b8f36c; box-shadow: 0 0 12px #b8f36c66; }
+    .loop-separator { display: inline-flex; flex: 0 0 44px; height: 58px; align-items: center; justify-content: center; }
+    .loop-separator::before { content: ''; width: 2px; height: 46px; border-radius: 2px; background: #b8f36c77; box-shadow: 0 0 10px #b8f36c33; }
+    .saw { position: absolute; z-index: 3; top: 40px; bottom: 20px; left: 50%; width: 2px; transform: translateX(-50%); border-radius: 2px; background: #b8f36c; box-shadow: 0 0 14px #b8f36c88; pointer-events: none; }
+    .saw-button { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); min-width: 54px; height: 24px; padding: 0 8px; border: 1px solid #b8f36c; border-radius: 7px; background: #b8f36c; color: #172012; font: 700 10px 'DM Mono', monospace; cursor: pointer; pointer-events: auto; }
+    .saw-button:hover:not(:disabled) { background: #d1ffa1; }
+    .saw-button:disabled { color: #59614f; border-color: #59614f; background: #252a24; cursor: not-allowed; box-shadow: none; }
+    .saw-button:focus-visible { outline: 2px solid #f3f4ee; outline-offset: 3px; }
+    .hint { display: flex; justify-content: space-between; margin: 12px 3px 0; color: #6f776f; font: 11px 'DM Mono', monospace; }
+    .hint span:last-child { color: #9aa197; }
+    .actions { display: flex; justify-content: center; align-items: center; gap: 16px; margin-top: 36px; }
+    .primary { border: 0; border-radius: 10px; background: #b8f36c; color: #172012; padding: 13px 21px; font-size: 13px; font-weight: 800; cursor: pointer; transition: transform .15s, background .15s; }
+    .primary:hover { transform: translateY(-1px); background: #c9ff83; }
+    #check:disabled, #check:disabled:hover { transform: none; background: #2a302b; color: #798178; cursor: not-allowed; box-shadow: none; }
+    .reset { background: transparent; border: 0; color: #899187; font-size: 12px; cursor: pointer; padding: 10px; }
+    .reset:hover { color: #f3f4ee; }
+    .note { margin-top: 54px; text-align: center; color: #626a63; font: 10px 'DM Mono', monospace; letter-spacing: .08em; }
+    .overlay { position: fixed; inset: 0; z-index: 5; display: grid; place-items: center; padding: 24px; background: #080b09d9; backdrop-filter: blur(8px); }
+    .overlay[hidden] { display: none; }
+    .success { width: min(100%, 540px); padding: 36px; border: 1px solid #344333; border-radius: 18px; background: #181e19; box-shadow: 0 30px 100px #0009; }
+    .success .eyebrow { display: flex; align-items: center; gap: 8px; }
+    .success h2 { margin: 14px 0 6px; font-size: 34px; letter-spacing: -.06em; }
+    .success p { margin: 0; color: #9ba49a; font-size: 13px; }
+    .tokens { display: flex; flex-wrap: wrap; gap: 8px; margin: 25px 0 28px; }
+    .token { padding: 7px 10px; border: 1px solid #3b4938; border-radius: 7px; color: #dbf3cd; background: #20291f; font: 12px 'DM Mono', monospace; }
+    .success .primary { width: 100%; }
+    @media(max-width: 640px) { .shell { width: min(100% - 28px, 1120px); padding-top: 22px; } header { margin-bottom: 58px; } .tag { font-size: 9px; } .rules { grid-template-columns: 1fr; gap: 8px; } .rule { min-height: 54px; padding: 10px 12px; } .track { height: 158px; } .hint { font-size: 9px; } .note { margin-top: 40px; } .success { padding: 27px 22px; } }
+    @media(prefers-reduced-motion: reduce) { .lane { animation-duration: 90s; } * { scroll-behavior: auto !important; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header><div class="brand"><span class="brand-mark">/</span> cutline</div><span class="tag">A pretokenization game · 01</span></header>
+    <section class="intro">
+      <div class="eyebrow">Read the rules. Make the cuts.</div>
+      <h1>Where does a token end?</h1>
+      <p>Wait for a character boundary to pass under the saw, then click CUT.</p>
+    </section>
+    <section class="rules" aria-label="Tokenization rules">
+      <div class="rule" id="rule-spaces"><span class="rule-icon">␠</span><span>Cut all spaces</span></div>
+      <div class="rule" id="rule-punctuation"><span class="rule-icon">,.</span><span>Cut around punctuation</span></div>
+      <div class="rule" id="rule-words"><span class="rule-icon">ab</span><span>Don't split words</span></div>
+    </section>
+    <section class="track" aria-label="Scrolling sentence. Click the stationary saw button when a character boundary passes beneath it.">
+      <span class="track-label">sentence 01 / 01</span>
+      <div class="lane" id="lane"></div>
+      <div class="saw" id="saw"><button class="saw-button" id="saw-button" type="button" disabled>CUT</button></div>
+    </section>
+    <div class="hint"><span>WAIT FOR A BOUNDARY UNDER THE SAW · CLICK CUT</span><span id="cut-count">0 cuts</span></div>
+    <div class="actions"><button class="primary" id="check" disabled>Check my cuts <span aria-hidden="true">↗</span></button><button class="reset" id="reset">Reset cuts</button></div>
+    <div class="note">A TOKEN IS A CHUNK OF TEXT THE MODEL CAN READ</div>
+  </main>
+  <div class="overlay" id="overlay" hidden>
+    <section class="success" role="dialog" aria-modal="true" aria-labelledby="success-title">
+      <div class="eyebrow">✳ &nbsp;All rules satisfied</div>
+      <h2 id="success-title">Perfectly tokenized.</h2>
+      <p>All three rules are satisfied. Look at your outputs below.</p>
+      <div class="tokens" id="tokens"></div>
+      <button class="primary" id="again">Play again <span aria-hidden="true">↗</span></button>
+    </section>
+  </div>
+  <script>
+    const text = "Don't rush—cut carefully: token by token, click & check!";
+    const punctuation = /[.,!?;:—–-…'’“”‘"()[\]{}&]/;
+    const lane = document.querySelector('#lane');
+    const track = document.querySelector('.track');
+    const sawButton = document.querySelector('#saw-button');
+    const cuts = new Set();
+    const gaps = {};
+    let targetIndex = null;
+
+    function addSentence() {
+      const sentence = document.createElement('span');
+      sentence.className = 'sentence';
+      function addBoundary(index) {
+        const boundary = document.createElement('span');
+        boundary.className = 'boundary';
+        boundary.setAttribute('aria-hidden', 'true');
+        sentence.append(boundary);
+        (gaps[index] ??= []).push(boundary);
+      }
+      addBoundary(-1);
+      [...text].forEach((char, index) => {
+        const letter = document.createElement('span');
+        letter.className = 'char';
+        letter.textContent = char;
+        sentence.append(letter);
+        addBoundary(index);
+      });
+      lane.append(sentence);
+      const separator = document.createElement('span');
+      separator.className = 'loop-separator';
+      separator.setAttribute('aria-hidden', 'true');
+      lane.append(separator);
+    }
+    addSentence();
+    addSentence();
+    const scrollAnimation = lane.getAnimations().find(animation => animation.animationName === 'drift');
+    function updateScrollSpeed() {
+      scrollAnimation.playbackRate = track.matches(':hover') ? 1 : 2;
+    }
+    track.addEventListener('pointerenter', updateScrollSpeed);
+    track.addEventListener('pointerleave', updateScrollSpeed);
+    updateScrollSpeed();
+
+    function findTarget() {
+      const trackRect = track.getBoundingClientRect();
+      const sawX = trackRect.left + trackRect.width / 2;
+      let closest = { index: null, distance: Infinity };
+      Object.entries(gaps).forEach(([key, copies]) => copies.forEach(boundary => {
+        const index = Number(key);
+        const rect = boundary.getBoundingClientRect();
+        const distance = Math.abs((rect.left + rect.width / 2) - sawX);
+        if (distance < closest.distance) closest = { index, distance };
+      }));
+      const nextTarget = closest.distance <= 10 ? closest.index : null;
+      if (targetIndex !== nextTarget) {
+        if (targetIndex !== null) gaps[targetIndex].forEach(boundary => boundary.classList.remove('target'));
+        targetIndex = nextTarget;
+        if (targetIndex !== null) gaps[targetIndex].forEach(boundary => boundary.classList.add('target'));
+      }
+      sawButton.disabled = targetIndex === null;
+      sawButton.textContent = targetIndex !== null && cuts.has(targetIndex) ? 'UNDO' : 'CUT';
+      const location = targetIndex === -1 ? `before “${text[0]}”` : targetIndex === text.length - 1 ? `after “${text.at(-1)}”` : `between “${text[targetIndex]}” and “${text[targetIndex + 1]}”`;
+      sawButton.setAttribute('aria-label', targetIndex === null ? 'Wait for a character boundary under the saw' : `${cuts.has(targetIndex) ? 'Remove cut' : 'Cut'} ${location}`);
+    }
+
+    sawButton.addEventListener('click', () => {
+      if (targetIndex === null) return;
+      cuts.has(targetIndex) ? cuts.delete(targetIndex) : cuts.add(targetIndex);
+      gaps[targetIndex].forEach(boundary => boundary.classList.toggle('cut', cuts.has(targetIndex)));
+      updateRules();
+      findTarget();
+    });
+    setInterval(findTarget, 50);
+
+    function updateRules() {
+      const spacesOk = [...text].every((char, i) => char !== ' ' || cuts.has(i - 1) && cuts.has(i));
+      const punctuationOk = [...text].every((char, i) => !punctuation.test(char) || cuts.has(i - 1) && cuts.has(i));
+      const wordsOk = [...cuts].every(i => !( /[A-Za-z0-9]/.test(text[i]) && /[A-Za-z0-9]/.test(text[i + 1]) ));
+      for (const [id, ok] of [['spaces', spacesOk], ['punctuation', punctuationOk], ['words', wordsOk]]) {
+        const rule = document.querySelector(`#rule-${id}`);
+        rule.classList.toggle('good', ok);
+        rule.classList.toggle('bad', !ok);
+      }
+      document.querySelector('#cut-count').textContent = `${cuts.size} ${cuts.size === 1 ? 'cut' : 'cuts'}`;
+      const allOk = spacesOk && punctuationOk && wordsOk;
+      document.querySelector('#check').disabled = !allOk;
+      return allOk;
+    }
+
+    function showTokens() {
+      const result = [];
+      let start = 0;
+      for (let i = 0; i < text.length; i++) {
+        if (cuts.has(i)) { result.push(text.slice(start, i + 1)); start = i + 1; }
+      }
+      result.push(text.slice(start));
+      document.querySelector('#tokens').replaceChildren(...result.map(token => token.trim()).filter(Boolean).map(token => {
+        const chip = document.createElement('span'); chip.className = 'token'; chip.textContent = token; return chip;
+      }));
+      lane.classList.add('paused');
+      document.querySelector('#overlay').hidden = false;
+      document.querySelector('#again').focus();
+    }
+
+    document.querySelector('#check').addEventListener('click', () => {
+      if (updateRules()) showTokens();
+    });
+    document.querySelector('#reset').addEventListener('click', () => {
+      cuts.clear(); Object.values(gaps).flat().forEach(boundary => boundary.classList.remove('cut')); updateRules();
+    });
+    document.querySelector('#again').addEventListener('click', () => {
+      document.querySelector('#overlay').hidden = true;
+      cuts.clear(); Object.values(gaps).flat().forEach(boundary => boundary.classList.remove('cut')); updateRules();
+      lane.classList.remove('paused');
+      document.querySelector('#check').focus();
+    });
+    updateRules();
+  </script>
+</body>
+</html>
