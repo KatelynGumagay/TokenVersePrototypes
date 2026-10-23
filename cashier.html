@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#101212" />
+  <title>ID Checkout — TokenVerse prototype</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap');
+    :root { color-scheme: dark; font-family: Manrope, system-ui, sans-serif; background: #101212; color: #f3f4ee; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: radial-gradient(ellipse at 50% 0%, #242b27 0, #151917 42%, #101212 78%); }
+    button { font: inherit; }
+    .shell { width: min(100% - 40px, 1060px); margin: auto; padding: 30px 0 58px; }
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 56px; }
+    .brand { display: flex; align-items: center; gap: 11px; color: inherit; text-decoration: none; font-size: 14px; font-weight: 800; letter-spacing: -.03em; }
+    .brand-mark { display: grid; width: 28px; height: 28px; place-items: center; border: 1px solid #b8f36c; border-radius: 9px; color: #b8f36c; font: 15px 'DM Mono', monospace; }
+    .tag, .eyebrow { color: #929a92; font: 11px 'DM Mono', monospace; letter-spacing: .14em; text-transform: uppercase; }
+    .intro { margin-bottom: 28px; }
+    .eyebrow { color: #b8f36c; }
+    h1 { margin: 10px 0 8px; font-size: clamp(38px, 5vw, 54px); line-height: 1; letter-spacing: -.065em; }
+    .intro p { margin: 0; color: #929a92; font-size: 14px; }
+    .stats { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 20px 0 12px; color: #8c958b; font: 10px 'DM Mono', monospace; letter-spacing: .08em; text-transform: uppercase; }
+    .counter { color: #dce8d5; }
+    .factory { display: grid; grid-template-columns: minmax(0, 1fr) 225px minmax(0, 1fr); gap: 12px; align-items: stretch; }
+    .panel { min-width: 0; padding: 17px; border: 1px solid #2a312d; border-radius: 15px; background: linear-gradient(160deg, #1a201c, #151916); }
+    .panel-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 13px; }
+    .panel-title { color: #8c958b; font: 10px 'DM Mono', monospace; letter-spacing: .13em; text-transform: uppercase; }
+    .belt { position: relative; display: flex; height: 194px; min-height: 194px; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #343d35; border-radius: 11px; background: repeating-linear-gradient(0deg, #151a17 0 25px, #1b211d 25px 27px); }
+    .belt::before, .belt::after { position: absolute; top: 0; bottom: 0; width: 4px; background: #39443a; content: ''; }
+    .belt::before { left: 13px; } .belt::after { right: 13px; }
+    .token { z-index: 1; display: grid; min-width: 80px; min-height: 64px; place-items: center; padding: 12px; border: 1px solid #536749; border-radius: 10px; background: linear-gradient(145deg, #283326, #20291f); color: #e0f4d1; font: 500 17px 'DM Mono', monospace; box-shadow: 0 10px 22px #0005; animation: arrive .28s ease-out; cursor: grab; touch-action: none; user-select: none; }
+    .token:active, .token.dragging { cursor: grabbing; box-shadow: 0 14px 30px #0009, 0 0 0 2px #b8f36c88; }
+    .token.punctuation { min-width: 54px; }
+    .empty { z-index: 1; color: #646d64; font-size: 12px; text-align: center; }
+    @keyframes arrive { from { transform: translateY(24px) scale(.95); opacity: .25; } to { transform: translateY(0) scale(1); opacity: 1; } }
+    .machine { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 15px 10px; border: 1px solid #354031; border-radius: 14px; background: linear-gradient(180deg, #222b21, #171c18); text-align: center; }
+    .machine-label { color: #9ca895; font: 9px 'DM Mono', monospace; letter-spacing: .13em; text-transform: uppercase; }
+    .machine-body { width: 100%; padding: 15px 10px 12px; border: 1px solid #4a5b43; border-radius: 12px; background: linear-gradient(145deg, #303b2c, #222a20); box-shadow: inset 0 1px #ffffff0d, 0 12px 25px #0004; }
+    .machine-name { margin-bottom: 11px; color: #d4dfcc; font: 700 10px 'DM Mono', monospace; letter-spacing: .08em; }
+    .screen { display: grid; min-height: 53px; place-items: center; margin-bottom: 12px; padding: 6px; border: 1px solid #495548; border-radius: 7px; background: #101511; color: #b8f36c; font: 500 12px 'DM Mono', monospace; overflow-wrap: anywhere; }
+    .scanner { display: grid; min-height: 52px; place-items: center; margin: 0 auto 11px; border: 1px dashed #a4e95c99; border-radius: 7px; background: #a4e95c15; color: #b8f36c; font: 9px 'DM Mono', monospace; letter-spacing: .12em; transition: background .15s, box-shadow .15s; }
+    .machine-body.drag-over .scanner { background: #b8f36c44; box-shadow: 0 0 18px #b8f36c77; }
+    .slot { height: 12px; border: 1px solid #111612; border-radius: 3px; background: #0c100d; box-shadow: inset 0 2px 4px #000; }
+    .scan { display: none; }
+    .token:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid #b8f36c; outline-offset: 3px; }
+    .belt-caption { margin: 10px 2px 0; color: #70796f; font: 9px 'DM Mono', monospace; letter-spacing: .06em; text-align: center; }
+    .message { min-height: 20px; margin: 14px 0 0; color: #b8f36c; font: 11px 'DM Mono', monospace; text-align: center; }
+    .outputs { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+    .output-chip { display: flex; align-items: center; justify-content: center; gap: 8px; width: max-content; max-width: calc(100% - 30px); padding: 7px 9px; border: 1px solid #354331; border-radius: 8px; background: #1b221a; animation: arrive .25s ease-out; }
+    .belt.output { flex-direction: column; justify-content: flex-start; gap: 6px; overflow-y: auto; padding: 14px 0; }
+    .output-token { color: #dbe9d2; font: 11px 'DM Mono', monospace; }
+    .output-id { color: #b8f36c; font: 10px 'DM Mono', monospace; }
+    .actions { display: flex; justify-content: center; margin-top: 14px; }
+    .reset { border: 1px solid #384139; border-radius: 9px; background: transparent; color: #a4ada3; padding: 9px 14px; font-size: 11px; cursor: pointer; }
+    .reset:hover { border-color: #707d6a; color: #f3f4ee; }
+    .note { margin-top: 46px; color: #626a63; font: 10px 'DM Mono', monospace; letter-spacing: .08em; text-align: center; }
+    @media(max-width: 760px) { .shell { width: min(100% - 28px, 1060px); padding-top: 22px; } header { margin-bottom: 40px; } .factory { grid-template-columns: minmax(0, 1fr) 172px; } .machine { grid-column: 1 / -1; grid-row: 2; flex-direction: row; } .machine-body { max-width: 220px; } .belt { min-height: 160px; } .belt.output { min-height: 160px; } }
+    @media(max-width: 470px) { .factory { grid-template-columns: 1fr; } .machine { grid-column: auto; grid-row: auto; flex-direction: column; } .machine-body { max-width: 260px; } .belt { min-height: 125px; } .tag { font-size: 9px; } .stats { font-size: 9px; } }
+    @media(prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header><a class="brand" href="index.html" aria-label="Back to TokenVerse home"><span class="brand-mark">/</span> tokenverse</a><span class="tag">Prototype 03 · Token IDs</span></header>
+    <section class="intro"><div class="eyebrow">Cashier training · shift 01</div><h1>ID Checkout</h1><p>Scan each token. The ID vending machine prints its matching token ID.</p></section>
+    <div class="stats"><span>Incoming sentence · pretokenized</span><span class="counter" id="counter">0 / 17 scanned</span></div>
+    <section class="factory" aria-label="Token scanning station">
+      <div class="panel"><div class="panel-head"><span class="panel-title">Incoming belt ↑</span><span class="panel-title" id="next-label">Next token</span></div><div class="belt" id="incoming" aria-live="polite"></div><p class="belt-caption">DRAG THE TOKEN UP TO THE SCANNER</p></div>
+      <section class="machine" aria-label="Token ID vending machine"><div class="machine-label">Token ID dispenser</div><div class="machine-body" id="machine-body"><div class="machine-name">TOKENVERSE / ID-01</div><div class="screen" id="screen" aria-live="polite">READY TO SCAN</div><div class="scanner" id="scanner">DROP TOKEN HERE</div><div class="slot"></div></div></section>
+      <div class="panel"><div class="panel-head"><span class="panel-title">ID output belt ↑</span><span class="panel-title" id="output-count">0 outputs</span></div><div class="belt output" id="outgoing" aria-live="polite"><span class="empty">IDs will arrive here</span></div><p class="belt-caption">NEW TOKEN IDS RISE UP THE BELT</p></div>
+    </section>
+    <p class="message" id="message" aria-live="polite">Cashier, scan the token waiting on the belt.</p>
+    <div class="actions"><button class="reset" id="reset" type="button">Start shift over</button></div>
+    <div class="note">DEMO TOKEN IDS · A TOKEN ID IS THE NUMBER USED TO REPRESENT A TOKEN</div>
+  </main>
+  <script>
+    const tokens = ['Can', 'you', 'help', 'me', 'write', 'an', 'unforgettable', 'goodbye', 'mesage', '?', 'I', 'want', 'it', 'to', 'be', 'beautiful', '.'];
+    const ids = [1045, 499, 1037, 584, 4056, 459, 38049, 9117, 34291, 30, 40, 1364, 433, 311, 387, 7078, 13];
+    let index = 0;
+    const incoming = document.querySelector('#incoming');
+    const outgoing = document.querySelector('#outgoing');
+    const screen = document.querySelector('#screen');
+    const machineBody = document.querySelector('#machine-body');
+    const scanner = document.querySelector('#scanner');
+
+    function scanCurrentToken() {
+      if (index >= tokens.length) return;
+      const token = tokens[index];
+      const id = ids[index];
+      screen.textContent = `ID ${id}`;
+      const chip = document.createElement('span');
+      chip.className = 'output-chip';
+      const label = document.createElement('span');
+      label.className = 'output-token';
+      label.textContent = token;
+      const number = document.createElement('span');
+      number.className = 'output-id';
+      number.textContent = `ID ${id}`;
+      chip.append(label, number);
+      if (outgoing.querySelector('.empty')) outgoing.replaceChildren();
+      outgoing.append(chip);
+      index++;
+      document.querySelector('#message').textContent = index === tokens.length ? 'Shift complete. Every token has its ID.' : `Scanned “${token}” → ID ${id}. Next token is ready.`;
+      render();
+    }
+
+    function render() {
+      incoming.replaceChildren();
+      if (index < tokens.length) {
+        const token = document.createElement('span');
+        token.className = `token${tokens[index].length === 1 ? ' punctuation' : ''}`;
+        token.textContent = tokens[index];
+        token.tabIndex = 0;
+        token.setAttribute('role', 'button');
+        token.setAttribute('aria-label', `Token ${token.textContent}. Drag to scanner, or press Enter to scan.`);
+        token.addEventListener('keydown', event => {
+          if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); scanCurrentToken(); }
+        });
+        token.addEventListener('pointerdown', event => {
+          if (event.button !== 0) return;
+          event.preventDefault();
+          const startX = event.clientX;
+          const startY = event.clientY;
+          token.setPointerCapture(event.pointerId);
+          token.classList.add('dragging');
+          const move = moveEvent => {
+            token.style.transform = `translate(${moveEvent.clientX - startX}px, ${moveEvent.clientY - startY}px)`;
+            const rect = scanner.getBoundingClientRect();
+            const over = moveEvent.clientX >= rect.left && moveEvent.clientX <= rect.right && moveEvent.clientY >= rect.top && moveEvent.clientY <= rect.bottom;
+            machineBody.classList.toggle('drag-over', over);
+          };
+          const end = endEvent => {
+            const rect = scanner.getBoundingClientRect();
+            const dropped = endEvent.clientX >= rect.left && endEvent.clientX <= rect.right && endEvent.clientY >= rect.top && endEvent.clientY <= rect.bottom;
+            token.removeEventListener('pointermove', move);
+            token.removeEventListener('pointerup', end);
+            token.removeEventListener('pointercancel', end);
+            machineBody.classList.remove('drag-over');
+            token.classList.remove('dragging');
+            if (dropped) scanCurrentToken();
+            else token.style.transform = '';
+          };
+          token.addEventListener('pointermove', move);
+          token.addEventListener('pointerup', end);
+          token.addEventListener('pointercancel', end);
+        });
+        incoming.append(token);
+      } else {
+        const empty = document.createElement('span');
+        empty.className = 'empty';
+        empty.textContent = 'All tokens scanned';
+        incoming.append(empty);
+      }
+      document.querySelector('#counter').textContent = `${index} / ${tokens.length} scanned`;
+      document.querySelector('#next-label').textContent = index < tokens.length ? `Token ${index + 1}` : 'Complete';
+      document.querySelector('#output-count').textContent = `${index} ${index === 1 ? 'output' : 'outputs'}`;
+    }
+
+    document.querySelector('#reset').addEventListener('click', () => {
+      index = 0;
+      screen.textContent = 'READY TO SCAN';
+      outgoing.innerHTML = '<span class="empty">IDs will arrive here</span>';
+      document.querySelector('#message').textContent = 'Cashier, scan the token waiting on the belt.';
+      render();
+      incoming.querySelector('.token')?.focus();
+    });
+    render();
+  </script>
+</body>
+</html>
