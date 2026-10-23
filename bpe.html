@@ -96,9 +96,9 @@
     <header><a class="brand" href="index.html" aria-label="Back to TokenVerse home"><span class="brand-mark">/</span> tokenverse</a><span class="tag">Prototype 02 · BPE</span></header>
     <section class="intro"><div class="eyebrow">Byte pair encoding</div><h1>Merge Lab</h1><p>Use each ranked ribbon on its exact neighboring pair. One ribbon merges two tokens.</p></section>
     <nav class="levels" aria-label="Choose a level">
-      <button class="level" type="button" data-level="0" aria-current="step"><span class="level-num">01</span><span><span class="level-name">One token</span><span class="level-word">cater</span></span></button>
-      <button class="level" type="button" data-level="1"><span class="level-num">02</span><span><span class="level-name">Two tokens</span><span class="level-word">sunset</span></span></button>
-      <button class="level" type="button" data-level="2"><span class="level-num">03</span><span><span class="level-name">Misspelled</span><span class="level-word">freind</span></span></button>
+      <button class="level" type="button" data-level="0" aria-current="step"><span class="level-num">01</span><span><span class="level-name">One token</span><span class="level-word">help</span></span></button>
+      <button class="level" type="button" data-level="1"><span class="level-num">02</span><span><span class="level-name">Misspelled</span><span class="level-word">mesage</span></span></button>
+      <button class="level" type="button" data-level="2"><span class="level-num">03</span><span><span class="level-name">Long word</span><span class="level-word">unforgettable</span></span></button>
     </nav>
     <div class="board">
       <section class="panel" aria-labelledby="word-heading">
@@ -124,17 +124,18 @@
   </div>
   <script>
     const levels = [
-      { word: 'cater', title: 'One token', target: ['cater'], rules: [
-        { a: 'c', b: 'a' }, { a: 'ca', b: 't' }, { a: 'cat', b: 'e' }, { a: 'cate', b: 'r' },
-        { a: 'c', b: 'r', distractor: true }, { a: 'a', b: 'r', distractor: true }
+      { word: 'help', title: 'One token', target: ['help'], rules: [
+        { a: 'h', b: 'e' }, { a: 'he', b: 'l' }, { a: 'hel', b: 'p' },
+        { a: 'h', b: 'l', distractor: true }, { a: 'e', b: 'p', distractor: true }, { a: 'p', b: 'h', distractor: true }
       ] },
-      { word: 'sunset', title: 'Two tokens', target: ['sun', 'set'], rules: [
-        { a: 's', b: 'u' }, { a: 'su', b: 'n' }, { a: 's', b: 'e' }, { a: 'se', b: 't' },
-        { a: 's', b: 't', distractor: true }, { a: 'u', b: 'e', distractor: true }, { a: 'n', b: 't', distractor: true }
+      { word: 'mesage', title: 'Misspelled word', target: ['me', 'sage'], rules: [
+        { a: 'm', b: 'e' }, { a: 's', b: 'a' }, { a: 'sa', b: 'g' }, { a: 'sag', b: 'e' },
+        { a: 'm', b: 's', distractor: true }, { a: 'a', b: 'e', distractor: true }
       ] },
-      { word: 'freind', title: 'Misspelled word', target: ['fre', 'ind'], rules: [
-        { a: 'f', b: 'r' }, { a: 'fr', b: 'e' }, { a: 'i', b: 'n' }, { a: 'in', b: 'd' },
-        { a: 'f', b: 'd', distractor: true }, { a: 'r', b: 'n', distractor: true }, { a: 'e', b: 'n', distractor: true }
+      { word: 'unforgettable', title: 'Long word', target: ['un', 'forget', 'table'], rules: [
+        { a: 'u', b: 'n' }, { a: 'f', b: 'o' }, { a: 'fo', b: 'r' }, { a: 'g', b: 'e' }, { a: 'ge', b: 't' }, { a: 'for', b: 'get' },
+        { a: 't', b: 'a' }, { a: 'ta', b: 'b' }, { a: 'tab', b: 'l' }, { a: 'tabl', b: 'e' },
+        { a: 'u', b: 'f', distractor: true }, { a: 'r', b: 't', distractor: true }, { a: 'a', b: 'e', distractor: true }
       ] }
     ];
     const tokensEl = document.querySelector('#tokens');
@@ -338,7 +339,7 @@
         ? remaining > 0
           ? `There ${remaining === 1 ? 'is' : 'are'} ${remaining} more valid merge ${remaining === 1 ? 'option' : 'options'}. Restart this word and try again.`
           : `The ending tokens should be ${expected.join(' + ')}. Restart this word and try again.`
-        : (levelIndex === 2 ? 'BPE follows its merge rules; it does not correct spelling.' : 'You followed the merge ranks and found the expected token split.');
+        : (current().word === 'mesage' ? 'BPE follows its merge rules; it does not correct spelling.' : 'You followed the merge ranks and found the expected token split.');
       document.querySelector('#result-tokens').replaceChildren(...tokens.map(value => {
         const chip = document.createElement('span'); chip.className = 'result-token'; chip.textContent = value; return chip;
       }));
