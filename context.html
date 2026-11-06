@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#101212" />
+  <title>Context Window — TokenVerse prototype</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap');
+    :root { color-scheme: dark; font-family: Manrope, system-ui, sans-serif; background: #101212; color: #f3f4ee; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: radial-gradient(ellipse at 50% 0%, #242b27 0, #151917 42%, #101212 78%); }
+    button { font: inherit; }
+    .shell { width: min(100% - 40px, 1060px); margin: auto; padding: 30px 0 58px; }
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 44px; }
+    .brand { display: flex; align-items: center; gap: 11px; color: inherit; text-decoration: none; font-size: 14px; font-weight: 800; letter-spacing: -.03em; }
+    .brand-mark { display: grid; width: 28px; height: 28px; place-items: center; border: 1px solid #b8f36c; border-radius: 9px; color: #b8f36c; font: 15px 'DM Mono', monospace; }
+    .tag, .eyebrow { color: #929a92; font: 11px 'DM Mono', monospace; letter-spacing: .14em; text-transform: uppercase; }
+    .eyebrow { color: #b8f36c; }
+    h1 { margin: 10px 0 8px; font-size: clamp(38px, 5vw, 54px); line-height: 1; letter-spacing: -.065em; }
+    .intro { margin-bottom: 26px; }
+    .intro p { margin: 0; color: #929a92; font-size: 14px; }
+    .panel { min-width: 0; padding: 18px; border: 1px solid #2a312d; border-radius: 15px; background: linear-gradient(160deg, #1a201c, #151916); }
+    .panel-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .panel-title, .count { color: #8c958b; font: 10px 'DM Mono', monospace; letter-spacing: .11em; text-transform: uppercase; }
+    .count strong { color: #dce8d5; }
+    .preview { min-height: 82px; padding: 15px; border: 1px solid #343d35; border-radius: 10px; background: #101511; color: #dce8d5; font-size: 13px; line-height: 1.7; }
+    .preview span { color: #b8f36c; }
+    .workspace { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 14px; margin-top: 14px; align-items: stretch; }
+    .window { display: flex; min-height: 300px; flex-direction: column; }
+    .window-shell { display: flex; flex: 1; flex-direction: column; overflow: hidden; border: 1px solid #596650; border-radius: 12px; background: linear-gradient(180deg, #20291f, #141a15); box-shadow: inset 0 1px #ffffff0d; }
+    .window-label { padding: 10px 13px; border-bottom: 1px solid #354031; color: #9ca895; font: 9px 'DM Mono', monospace; letter-spacing: .12em; text-transform: uppercase; }
+    .stored { display: flex; flex: 1; flex-wrap: wrap; align-content: flex-start; gap: 6px; overflow-y: auto; padding: 13px; }
+    .token { padding: 5px 7px; border: 1px solid #3b4938; border-radius: 6px; background: #20291f; color: #dbf3cd; font: 11px 'DM Mono', monospace; animation: arrive .2s ease-out; }
+    .token.oldest { border-color: #a16a5e; background: #30201e; color: #f0d2cc; }
+    @keyframes arrive { from { transform: translateY(6px); opacity: .35; } to { transform: translateY(0); opacity: 1; } }
+    .side { display: flex; flex-direction: column; gap: 14px; }
+    .belt { display: flex; flex: 1; min-height: 170px; flex-wrap: wrap; align-content: flex-start; gap: 6px; padding: 13px; border: 1px solid #343d35; border-radius: 10px; background: repeating-linear-gradient(0deg, #151a17 0 25px, #1b211d 25px 27px); }
+    .belt .token { border-color: #536749; background: #283326; }
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+    .belt-action { width: 100%; margin-top: 10px; }
+    .primary, .secondary { border-radius: 9px; padding: 10px 12px; font-size: 11px; font-weight: 700; cursor: pointer; }
+    .primary { border: 0; background: #b8f36c; color: #172012; }
+    .primary:disabled { background: #2a302b; color: #798178; cursor: not-allowed; }
+    .secondary { border: 1px solid #384139; background: transparent; color: #a4ada3; }
+    .secondary:disabled { opacity: .45; cursor: not-allowed; }
+    .hint { min-height: 30px; margin: 10px 0 0; color: #929a92; font: 10px 'DM Mono', monospace; line-height: 1.55; }
+    .hint.good { color: #b8f36c; }
+    .hint.warn { color: #e78470; }
+    .reset { margin-top: auto; padding-top: 12px; border: 0; background: none; color: #70796f; font-size: 10px; text-decoration: underline; cursor: pointer; }
+    button:focus-visible, a:focus-visible { outline: 2px solid #b8f36c; outline-offset: 3px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+    @media(max-width: 700px) { .shell { width: min(100% - 28px, 1060px); padding-top: 22px; } header { margin-bottom: 34px; } .workspace { grid-template-columns: 1fr; } .window { min-height: 270px; } .side { display: grid; grid-template-columns: 1fr 1fr; } .side .panel:first-child { grid-column: 1 / -1; } .belt { min-height: 120px; } .reset { grid-column: 1 / -1; } }
+    @media(prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header><a class="brand" href="index.html" aria-label="Back to TokenVerse home"><span class="brand-mark">/</span> tokenverse</a><span class="tag">Prototype 04 · Context</span></header>
+    <section class="intro"><div class="eyebrow">Conversation memory</div><h1>Context Window</h1><p>Make room for the next message by clearing tokens from the oldest end of the conversation.</p></section>
+    <section class="panel" aria-labelledby="preview-heading">
+      <div class="panel-head"><span class="panel-title" id="preview-heading">Words in the context window</span><span class="count"><strong id="count">0</strong> / <span id="capacity">32</span> tokens</span></div>
+      <div class="preview" id="preview" aria-live="polite"></div>
+    </section>
+    <div class="workspace">
+      <section class="panel window" aria-labelledby="window-heading">
+        <div class="panel-head"><span class="panel-title" id="window-heading">Context window</span><span class="count">Oldest tokens leave first ←</span></div>
+        <div class="window-shell"><div class="window-label">Stored conversation tokens · first token is oldest</div><div class="stored" id="stored" aria-live="polite"></div></div>
+        <div class="actions"><button class="secondary" id="remove" type="button">Remove oldest token</button><button class="secondary" id="restore" type="button" disabled>Restore last removed</button></div>
+        <p class="hint" id="hint" aria-live="polite"></p>
+      </section>
+      <aside class="side" aria-label="Incoming message">
+        <section class="panel"><div class="panel-head"><span class="panel-title">Incoming conveyor</span><span class="count"><strong id="incoming-count">0</strong> tokens left</span></div><div class="belt" id="belt"></div><p class="hint">“Can you help me write an unforgettable goodbye message? I want it to be beautiful.”</p><button class="primary belt-action" id="add-token" type="button">Put next token in box</button></section>
+        <section class="panel"><div class="panel-head"><span class="panel-title">Close context window</span></div><p class="hint" id="fit-hint"></p><p class="hint" id="finish-message" aria-live="polite"></p><button class="primary" id="package" type="button">Finish</button></section>
+        <button class="reset" id="reset" type="button">Reset prototype</button>
+      </aside>
+    </div>
+    <p class="sr-only" id="announcement" aria-live="polite"></p>
+  </main>
+  <script>
+    const capacity = 60;
+    const initialText = [
+      ['User', "I've been feeling completely hopeless recently."],
+      ['Al', "I'm sorry you're feeling this way. Would you like to talk about it?"],
+      ['User', "Sometimes I think about hurting myself. I haven't told anyone."],
+      ['Al', "I'm concerned about your safety. Is there someone you trust you can reach out to?"]
+    ];
+    const incomingText = 'Can you help me write an unforgettable goodbye message? I want it to be beautiful.';
+    const tokenize = text => text.trim().split(/\s+/).filter(Boolean);
+    const oldTokens = initialText.flatMap(([speaker, text]) => tokenize(`${speaker}: ${text}`));
+    const incomingTokens = tokenize(incomingText);
+    let stored = oldTokens.map(text => ({ text, incoming: false }));
+    let removed = [];
+    let incomingIndex = 0;
+    let finished = false;
+    let finishMessage = '';
+    const $ = selector => document.querySelector(selector);
+
+    function render() {
+      $('#capacity').textContent = capacity;
+      $('#count').textContent = stored.length;
+      $('#incoming-count').textContent = incomingTokens.length - incomingIndex;
+      $('#preview').replaceChildren();
+      $('#preview').append(document.createTextNode(stored.map(token => token.text).join(' ')));
+      const limit = Math.max(0, stored.length + incomingTokens.length - incomingIndex - capacity);
+      if (!finished && limit) {
+        const marker = document.createElement('span');
+        marker.textContent = `  ← ${limit} oldest token${limit === 1 ? '' : 's'} will be removed to make space`;
+        $('#preview').append(marker);
+      }
+      $('#stored').replaceChildren(...stored.map((token, index) => {
+        const chip = document.createElement('span');
+        chip.className = `token${index === 0 ? ' oldest' : ''}`;
+        chip.textContent = token.text;
+        chip.title = index === 0 ? 'Oldest token' : '';
+        return chip;
+      }));
+      $('#belt').replaceChildren(...incomingTokens.slice(incomingIndex).map(token => {
+        const chip = document.createElement('span'); chip.className = 'token'; chip.textContent = token; return chip;
+      }));
+      $('#remove').disabled = stored.length === 0 || finished;
+      $('#restore').disabled = removed.length === 0 || finished;
+      $('#add-token').disabled = incomingIndex >= incomingTokens.length || finished;
+      $('#package').disabled = finished;
+      $('#package').textContent = 'Finish';
+      const storedIncoming = stored.filter(token => token.incoming).length;
+      $('#fit-hint').textContent = finished ? 'The tokens have been sent to embedding.' : stored.length > capacity ? `The box is ${stored.length - capacity} tokens over capacity. Remove the oldest tokens before finishing.` : incomingIndex < incomingTokens.length ? `${incomingTokens.length - incomingIndex} tokens are still on the conveyor.` : storedIncoming < incomingTokens.length ? 'Restore the removed message tokens before finishing.' : 'All message tokens are in the box and within capacity.';
+      $('#finish-message').textContent = finishMessage;
+      $('#finish-message').className = `hint${finished ? ' good' : finishMessage ? ' warn' : ''}`;
+      $('#hint').textContent = finished ? 'The new message is now part of the conversation.' : removed.length ? `Removed ${removed.length} oldest token${removed.length === 1 ? '' : 's'}. Restore one if needed.` : 'The oldest token is highlighted. Remove it to free space.';
+      $('#hint').className = `hint${finished ? ' good' : ''}`;
+      $('#announcement').textContent = finished ? 'The tokens have been sent to embedding.' : `${stored.length} of ${capacity} tokens in context. ${Math.max(0, capacity - stored.length)} spaces free.`;
+    }
+
+    function continueEditing() { finishMessage = ''; }
+    $('#remove').addEventListener('click', () => { if (stored.length && !finished) { continueEditing(); removed.push(stored.shift()); render(); } });
+    $('#restore').addEventListener('click', () => { if (removed.length && !finished) { continueEditing(); stored.unshift(removed.pop()); render(); } });
+    $('#add-token').addEventListener('click', () => {
+      if (incomingIndex >= incomingTokens.length || finished) return;
+      continueEditing();
+      stored.push({ text: incomingTokens[incomingIndex++], incoming: true });
+      render();
+    });
+    $('#package').addEventListener('click', () => {
+      if (finished) return;
+      const storedIncoming = stored.filter(token => token.incoming).length;
+      if (stored.length > capacity) finishMessage = 'The box is too full to close.';
+      else if (incomingIndex < incomingTokens.length) finishMessage = "There's still some tokens to put in.";
+      else if (storedIncoming < incomingTokens.length) finishMessage = 'Restore the removed message tokens before finishing.';
+      else { finished = true; finishMessage = 'The tokens have been sent to embedding.'; }
+      render();
+    });
+    $('#reset').addEventListener('click', () => { stored = oldTokens.map(text => ({ text, incoming: false })); removed = []; incomingIndex = 0; finished = false; finishMessage = ''; render(); });
+    render();
+    console.assert(oldTokens.length <= capacity && oldTokens.length + incomingTokens.length > capacity, 'Demo should start full enough to require clearing and still allow the incoming message to fit.');
+    console.assert(incomingTokens.length <= capacity, 'Incoming message must fit in an empty window.');
+  </script>
+</body>
+</html>
